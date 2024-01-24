@@ -1,10 +1,21 @@
 # ANALYSING A BINARY FILE
-## Latifah Mojisola Salaudeen
-The CFG Introduction to Python MOOC in November, 2023 included a challenge which involved analysing a binary file for human readable content. The challenge tasks (link) included extracting video frames and syncronisation words. 
+The CFG Introduction to Python MOOC (sponsored by DSTL) in November 2023 included a challenge which involved analysing a binary file for human readable content. The challenge tasks included extracting video frames, syncronisation words and data. 
+ 
+## Background 
+- A binary file containing transmission from a UAV
+- Has video frames
+- Has synchronization words
+- Has data 
+
+## Approach
+- Check image signatures
+- Extract images
+- Get the rest of the non-image data
+- Non-JPEG data examined for sync words and data
 
 I first opened the file in a hex viewer to have an overview of it. One of the first things I noticed was that there were dates in it.
 
-First, I'll like to open the binary file and check for images. 
+Then, I opened the binary file and checked for images by looking through the file for image markers and trailers. 
 
 ```python
 # Defining image markers and trailers
@@ -43,9 +54,7 @@ try:
 except FileNotFoundError: 
         print("File not found.")
 ```
-Since JPEG is in file, I'd like to get the markers, trailers, and the data in between those.
-First, I'll get the indexes of the markers and trailers in the binary document.
-
+I found JPEG markers in the file, then proceeded to extract the image. To do this, I got the markers, trailers, and the data in between those.
 
 ```python
 #Using regex, find the positions(index) of all the markers and trailer
@@ -93,7 +102,8 @@ for i in range(len(markersIndex)): #loop runs for the number of items in markers
     print(f"JPEG extracted and saved as '{outputFilename}'")
 ```
 
-Now, I want to extract the rest of the data minus the jpeg. I can move from index 0 to the first marker; then move from trailer to marker (from trailer 1 to marker 2)
+I extracted 89 images. 
+Next, I extracted the rest of the data minus the jpeg.
 
 ```python
 markersIndex, trailersIndex = findJpegSignatures(dstlFile)
@@ -122,7 +132,7 @@ with open("nonJpegData.bin", 'wb') as output_file:
     print(f'Non-JPEG data extracted and saved to {"nonJpegData"}')
 ```
 
-With Non-JPEG data extracted. I'd like to see what that looks like as txt.
+With Non-JPEG data extracted. I wanted to see what that looks like as txt.
 
 ``` python
 # A function to convert a binary file to a text file
@@ -154,7 +164,7 @@ binaryToText(inputFile, outputFile)
 ```
 
 The first thing I noticed was that there are multiple dates and time within the text. 
-I went on a pattern finding 'mission', trying to see if there are patterns to 
+I went on a pattern finding 'mission', trying to see if there are patterns in the occurence of the text.
 
 ``` python
 #finding what's between the pictures
@@ -166,9 +176,9 @@ for i in range(len(markersIndex)-1):
 
 print(len(readFile)-trailersIndex[89])
 
-#it seems there are 241 characters between the jpeg images and 225 from the end of the trailer to the end of the file
-```
 
+```
+I found that there are 241 characters between the jpeg images and 225 from the end of the last trailer to the end of the file.
 
 ``` python
 beforeFirstImage = readFile[:markersIndex[0]]
@@ -179,13 +189,16 @@ print("beforeFirstImage as txt: "+beforeFirstImageText)
 ```
 
 Trying to see the last 225 indices (bytes) of the data
+
 ``` python
 last225bytes = readFile[-225:]
 # print(last225bytes)
 decodedLast225Bytes = last225bytes.decode(encoding="ascii", errors="ignore")
 print(decodedLast225Bytes)
 ```
+
 Is there a pattern between the 241 bytes of data between the images?
+
 ``` python
 bytesBetweenImages = b''
 decodedbytesBetweenImages = ""
@@ -204,10 +217,8 @@ with open("decodedbytesBetweenImages.txt", 'w') as file:
 print("Decoded text saved")
 ```
 
-``` python
-
-```
-
-``` python
-
-```
+## Summary of Findings
+- Video frame (89 jpeg pictures). The images show four waypoints, this could be the flight path of the UAV.
+- First image extracted at index 16. Pattern before that seems to be sync word signalling the beginning of transmission.
+- There is a consistent length of data between the images (241 bytes). These contain the date time stamp matching the images, as well as sync words.
+- After the last image, there is 225 bytes of data left. This includes a date time, however there is the possibilty that this is the corrupted image suggested in the brief.
